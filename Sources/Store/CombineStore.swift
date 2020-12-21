@@ -1,8 +1,8 @@
 //
-//  CombineStore.swift
+//  PublishMiddleware.swift
 //  
 //
-//  Created by Markus Pfeifer on 19.12.20.
+//  Created by Markus Pfeifer on 20.12.20.
 //
 
 import Foundation
@@ -10,30 +10,59 @@ import Foundation
 #if canImport(Combine)
 import Combine
 
-public final class CombineStore<State, Action, Effect> : StoreDelegate, ObservableObject {
+public final class CombineStore<State, Dispatch : DispatchFunction> : ObservableObject {
     
-    var store : Store<State, Action, Effect>!
-    
-    public var state : State {
-        store.state
+    private(set) public var state : State {
+        willSet {
+            objectWillChange.send()
+        }
     }
     
-    public init<R : Reducer, M : Middleware>(
+    @usableFromInline
+    var _dispatch : Dispatch?
+    
+    public init<R : Reducer, M : Middleware, Delegate: StoreDelegate>(
         initialState: R.State,
         reducer: R,
+        delegate: Delegate,
         middleware: M)
-    where R.Action == Action, R.State == State, R.SideEffect == Effect, M.Action == Action, M.Effect == Effect, M.State == State {
-        self.store = Store(initialState: initialState,
-                           reducer: reducer,
-                           delegate: self,
-                           middleware: middleware)
-    }
-    
-    public func storeWillChangeState() {
-        objectWillChange.send()
+    where R.Action == Dispatch.Action, R.State == State, R.SideEffect == Dispatch.Effect, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
+        var environment = Environment<State,R.Action>()
+        
+        self.state = initialState
+        
+        environment[StoreKey<State, R.Action>] = StoreStub({[weak self] action in
+            self?.dispatch(action)
+        },
+        {continuation in
+            DispatchQueue.main.async{[weak self] in
+                if let self = self {
+                    continuation(self.state)
+                }
+            }
+        })
+        
+        let baseDispatch = BaseDispatch(r: reducer)
+        {change in
+            change(&self.state)
+        }
+        
+        self._dispatch = middleware
+            .apply(to: baseDispatch,
+                   environment: environment)
     }
     
 }
 
+public extension CombineStore {
+    
+    @inlinable
+    func dispatch(_ action: Dispatch.Action) {
+        DispatchQueue.main.async{[weak self] in
+            _ = self?._dispatch?.dispatch(action)
+        }
+    }
+    
+}
 
 #endif

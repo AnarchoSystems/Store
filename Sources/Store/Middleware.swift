@@ -8,13 +8,20 @@
 import Foundation
 
 
-public protocol Middleware {
-    
-    associatedtype State
+public protocol DispatchFunction {
     associatedtype Action
     associatedtype Effect
+    func dispatch(_ action: Action) -> Effect?
+}
+
+
+public protocol Middleware where BaseDispatch.Action == NewDispatch.Action, BaseDispatch.Effect == NewDispatch.Effect {
     
-    func apply(to dispatchFunction: @escaping (Action) -> Effect?,
-               environment: Environment<State, Action>) -> (Action) -> Effect?
+    associatedtype State
+    associatedtype BaseDispatch : DispatchFunction
+    associatedtype NewDispatch : DispatchFunction
+    
+    func apply(to dispatchFunction: BaseDispatch,
+               environment: Environment<State, BaseDispatch.Action>) -> NewDispatch
     
 }

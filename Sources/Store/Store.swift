@@ -13,7 +13,7 @@ public protocol StoreDelegate : AnyObject {
 }
 
 
-public final class Store<State, Action, Effect> {
+public final class Store<State, Dispatch : DispatchFunction> {
     
     private(set) public var state : State {
         willSet {
@@ -24,19 +24,19 @@ public final class Store<State, Action, Effect> {
     public weak var delegate : StoreDelegate?
     
     @usableFromInline
-    var _dispatch : ((Action) -> Effect?)?
+    var _dispatch : Dispatch?
     
     public init<R : Reducer, M : Middleware, Delegate: StoreDelegate>(
         initialState: R.State,
         reducer: R,
         delegate: Delegate,
         middleware: M)
-    where R.Action == Action, R.State == State, R.SideEffect == Effect, M.Action == Action, M.Effect == Effect, M.State == State {
-        var environment = Environment<State,Action>()
+    where R.Action == Dispatch.Action, R.State == State, R.SideEffect == Dispatch.Effect, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
+        var environment = Environment<State,R.Action>()
         
         self.state = initialState
         
-        environment[StoreKey<State, Action>] = StoreStub({[weak self] action in
+        environment[StoreKey<State, R.Action>] = StoreStub({[weak self] action in
             self?.dispatch(action)
         },
         {continuation in
@@ -47,8 +47,9 @@ public final class Store<State, Action, Effect> {
             }
         })
         
-        let baseDispatch : (Action) -> Effect? = {action in
-            return reducer.apply(to: &self.state, action: action)
+        let baseDispatch = BaseDispatch(r: reducer)
+        {change in
+            change(&self.state)
         }
         
         self._dispatch = middleware
@@ -62,9 +63,23 @@ public final class Store<State, Action, Effect> {
 public extension Store {
     
     @inlinable
-    func dispatch(_ action: Action) {
+    func dispatch(_ action: Dispatch.Action) {
         DispatchQueue.main.async{[weak self] in
-            _ = self?._dispatch?(action)
+            _ = self?._dispatch?.dispatch(action)
+        }
+    }
+    
+}
+
+
+public struct BaseDispatch<R : Reducer> : DispatchFunction {
+    
+    let r : R
+    let onStateChange : ((inout R.State) -> R.SideEffect?) -> R.SideEffect?
+    
+    public func dispatch(_ action: R.Action) -> R.SideEffect? {
+        onStateChange{state in
+            r.apply(to: &state, action: action)
         }
     }
     
