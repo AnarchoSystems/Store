@@ -15,13 +15,18 @@ public struct StoreStub<State, Action> {
     let _dispatch : (Action) -> Void
     
     @usableFromInline
-    let _getState : (@escaping (State) -> Void) -> Void
+    let _getState : () -> State?
     
     @usableFromInline
     init(_ dispatch: @escaping (Action) -> Void,
-         _ getstate: @escaping (@escaping (State) -> Void) -> Void) {
+         _ getstate: @escaping () -> State?) {
         self._dispatch = dispatch
         self._getState = getstate
+    }
+    
+    @inlinable
+    public var state : State? {
+        _getState()
     }
     
     @inlinable
@@ -29,10 +34,6 @@ public struct StoreStub<State, Action> {
         _dispatch(action)
     }
     
-    @inlinable
-    public func withState(_ continuation : @escaping (State) -> Void) {
-        _getState(continuation)
-    }
     
 }
 
@@ -40,7 +41,7 @@ public struct StoreStub<State, Action> {
 public enum StoreKey<State, Action> : EnvironmentKey {
     
     public static var defaultValue: StoreStub<State, Action>{
-        StoreStub({_ in }, {_ in })
+        StoreStub({_ in }, {nil})
     }
     
 }

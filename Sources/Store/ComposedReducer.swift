@@ -11,6 +11,21 @@ import Foundation
 public extension Reducer {
     
     @inlinable
+    static func ..<O : Reducer>(lhs: Self, rhs: O) -> LPComposedReducer<Self, O> where SideEffect == Void, Action == O.Action, State == O.State {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
+    static func ..<O : Reducer>(lhs: Self, rhs: O) -> RPComposedReducer<Self, O> where O.SideEffect == Void, Action == O.Action, State == O.State {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
+    static func ..<O : Reducer>(lhs: Self, rhs: O) -> CSComposedReducer<Self, O> where SideEffect == O.SideEffect, SideEffect : ExpressibleByArrayLiteral, Action == O.Action, State == O.State {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
     func compose<O : Reducer>(with other: O) -> LPComposedReducer<Self, O> where SideEffect == Void, Action == O.Action, State == O.State {
         LPComposedReducer(r1: self, r2: other)
     }

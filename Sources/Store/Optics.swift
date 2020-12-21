@@ -81,4 +81,58 @@ public extension Prism {
         return apply(to: &copy){part in part}
     }
     
+    @inlinable
+    func put(in whole: inout WholeState,
+             newValue: PartialState) {
+        apply(to: &whole){$0 = newValue}
+    }
+    
+}
+
+
+
+public protocol Embedding {
+    
+    associatedtype SuperType
+    associatedtype SubType
+    
+    func cast(_ object: SubType) -> SuperType
+    func downCast(_ object: SuperType) -> SubType?
+    
+}
+
+
+public struct ClassEmbedding<S,T : AnyObject> : Embedding {
+    
+    public init?() {
+        guard S.self is T.Type else {
+            return nil
+        }
+    }
+    
+    public func cast(_ object: S) -> T {
+        object as! T
+    }
+    
+    public func downCast(_ object: T) -> S? {
+        object as? S 
+    }
+    
+}
+
+
+public struct OptionalEmbedding<T> : Embedding {
+    
+    public init(){}
+    
+    @inlinable
+    public func cast(_ object: T) -> T? {
+        object
+    }
+    
+    @inlinable
+    public func downCast(_ object: T?) -> T? {
+        object
+    }
+    
 }

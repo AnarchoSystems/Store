@@ -18,8 +18,8 @@ public extension Reducer {
         ActionMappingReducer(r: self, f: Closure(transform))
     }
     
-    func lensAction<L : Lens>(_ lens: L) -> ActionLensingReducer<Self, L> where L.PartialState == Action {
-        ActionLensingReducer(r: self, l: lens)
+    func embedAction<E : Embedding>(_ embedding: E) -> ActionEmbeddingReducer<Self, E> where E.SubType == Action {
+        ActionEmbeddingReducer(r: self, e: embedding)
     }
     
     func flatMapAction<F : Function>(_ transform: F) -> ActionFlatMappingReducer<Self, F> where F.Output == Action? {
@@ -28,10 +28,6 @@ public extension Reducer {
     
     func flatMapAction<NewAction>(_ transform: @escaping (NewAction) -> Action?) -> ActionFlatMappingReducer<Self, Closure<NewAction, Action?>> {
         ActionFlatMappingReducer(r: self, f: Closure(transform))
-    }
-    
-    func prismAction<P : Prism>(_ prism: P) -> ActionPrismingReducer<Self, P> where P.PartialState == Action {
-        ActionPrismingReducer(r: self, p: prism)
     }
     
 }
@@ -58,27 +54,6 @@ public struct ActionMappingReducer<R : Reducer, F : Function> : Reducer where F.
 }
 
 
-public struct ActionLensingReducer<R : Reducer, L : Lens> : Reducer where L.PartialState == R.Action {
-    
-    @usableFromInline
-    let r : R
-    @usableFromInline
-    let l : L
-    
-    @usableFromInline
-    init(r: R, l: L) {
-        self.r = r
-        self.l = l
-    }
-    
-    @inlinable
-    public func apply(to state: inout R.State, action: L.WholeState) -> R.SideEffect? {
-        r.apply(to: &state, action: l.get(from: action))
-    }
-    
-}
-
-
 public struct ActionFlatMappingReducer<R : Reducer, F : Function> where F.Output == R.Action? {
     
     @usableFromInline
@@ -100,22 +75,22 @@ public struct ActionFlatMappingReducer<R : Reducer, F : Function> where F.Output
 }
 
 
-public struct ActionPrismingReducer<R : Reducer, P : Prism> where P.PartialState == R.Action {
+public struct ActionEmbeddingReducer<R : Reducer, E : Embedding> where E.SubType == R.Action {
     
     @usableFromInline
     let r : R
     @usableFromInline
-    let p : P
+    let e : E
     
     @usableFromInline
-    init(r: R, p: P) {
+    init(r: R, e: E) {
         self.r = r
-        self.p = p
+        self.e = e
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: P.WholeState) -> R.SideEffect? {
-        p.tryGet(from: action)
+    public func apply(to state: inout R.State, action: E.SuperType) -> R.SideEffect? {
+        e.downCast(action)
             .flatMap{action in r.apply(to: &state, action: action)}
     }
 }

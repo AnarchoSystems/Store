@@ -31,7 +31,7 @@ public extension Reducer {
     }
     
     @inlinable
-    func mapSideEffect<NewEffect>(newType: NewEffect.Type = NewEffect.self) -> PureReducerSideEffectEmbedder<Self, NewEffect> {
+    func mapSideEffect<NewEffect>(newType: NewEffect.Type = NewEffect.self) -> PureReducerSideEffectEmbedder<Self, NewEffect> where SideEffect == Void {
         PureReducerSideEffectEmbedder(r: self)
     }
     

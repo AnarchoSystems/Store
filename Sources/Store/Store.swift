@@ -39,12 +39,8 @@ public final class Store<State, Dispatch : DispatchFunction> {
         environment[StoreKey<State, R.Action>] = StoreStub({[weak self] action in
             self?.dispatch(action)
         },
-        {continuation in
-            DispatchQueue.main.async{[weak self] in
-                if let self = self {
-                    continuation(self.state)
-                }
-            }
+        {[weak self] in
+            self.map(\.state)
         })
         
         let baseDispatch = BaseDispatch(r: reducer)

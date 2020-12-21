@@ -27,6 +27,11 @@ public extension Function {
     }
     
     @inlinable
+    static func ..<O : Function>(lhs: Self, rhs: O) -> ComposedFunction<Self, O> where Output == O.Input {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
     func compose<O : Function>(with other: O) -> ComposedFunction<Self, O> where Output == O.Input {
         ComposedFunction(f1: self, f2: other)
     }
