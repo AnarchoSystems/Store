@@ -11,7 +11,7 @@ import Foundation
 public protocol DispatchFunction {
     associatedtype Action
     associatedtype Effect
-    func dispatch(_ action: Action) -> Effect?
+    mutating func dispatch(_ action: Action) -> Effect?
 }
 
 
