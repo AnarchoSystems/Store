@@ -89,31 +89,40 @@ public extension Prism {
     
 }
 
+public protocol Extractor {
+    
+    associatedtype SuperType
+    associatedtype SubType
+    
+    func downCast(_ object: SuperType) -> SubType?
 
+}
 
-public protocol Embedding {
+public protocol Embedding : Extractor {
     
     associatedtype SuperType
     associatedtype SubType
     
     func cast(_ object: SubType) -> SuperType
-    func downCast(_ object: SuperType) -> SubType?
     
 }
 
 
 public struct ClassEmbedding<S,T : AnyObject> : Embedding {
     
+    @inlinable
     public init?() {
         guard S.self is T.Type else {
             return nil
         }
     }
     
+    @inlinable
     public func cast(_ object: S) -> T {
         object as! T
     }
     
+    @inlinable
     public func downCast(_ object: T) -> S? {
         object as? S 
     }
@@ -123,6 +132,7 @@ public struct ClassEmbedding<S,T : AnyObject> : Embedding {
 
 public struct OptionalEmbedding<T> : Embedding {
     
+    @inlinable
     public init(){}
     
     @inlinable
@@ -133,6 +143,24 @@ public struct OptionalEmbedding<T> : Embedding {
     @inlinable
     public func downCast(_ object: T?) -> T? {
         object
+    }
+    
+}
+
+
+public struct ResultEmbedding<Success, Failure : Error> : Embedding {
+    
+    @inlinable
+    public init(){}
+    
+    @inlinable
+    public func cast(_ object: Success) -> Result<Success, Failure> {
+        .success(object)
+    }
+    
+    @inlinable
+    public func downCast(_ object: Result<Success, Failure>) -> Success? {
+        try? object.get()
     }
     
 }

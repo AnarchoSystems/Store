@@ -40,16 +40,14 @@ public struct StoreStub<State, Action> {
 
 public enum StoreKey<State, Action> : EnvironmentKey {
     
-    public static var defaultValue: StoreStub<State, Action>{
-        StoreStub({_ in }, {nil})
-    }
+    public typealias Value = StoreStub<State, Action>
     
 }
 
 
 public extension Environment {
     
-    func getStore() -> StoreStub<State, Action>? {
+    var store : StoreStub<State, Action>? {
         self[StoreKey<State, Action>.self]
     }
     

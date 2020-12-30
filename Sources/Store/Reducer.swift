@@ -10,7 +10,7 @@ import Foundation
 
 public protocol Reducer {
     
-    associatedtype SideEffect = Void
+    associatedtype SideEffect
     associatedtype State
     associatedtype Action
     

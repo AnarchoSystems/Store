@@ -16,7 +16,7 @@ public extension Reducer {
     }
     
     @inlinable
-    func mapState<NewState, NewEffect>(_ arrow: @escaping (inout NewState, (inout State) -> SideEffect?) -> NewEffect) -> AnonymousStateMap<Self, ClosureStateArrow<State, NewState, SideEffect, NewEffect>> {
+    func mapState<NewState, NewEffect>(_ arrow: @escaping (inout NewState, (inout State) -> SideEffect?) -> NewEffect?) -> AnonymousStateMap<Self, ClosureStateArrow<State, NewState, SideEffect, NewEffect>> {
         AnonymousStateMap(r: self, arrow: ClosureStateArrow(arrow))
     }
     
@@ -38,8 +38,8 @@ public struct ClosureStateArrow<State, NewState, Effect, NewEffect> : StateArrow
     @usableFromInline
     let closure : (inout NewState, (inout State) -> Effect?) -> NewEffect?
     
-    @usableFromInline
-    init(_ closure: @escaping (inout NewState, (inout State) -> Effect?) -> NewEffect?) {
+    @inlinable
+    public init(_ closure: @escaping (inout NewState, (inout State) -> Effect?) -> NewEffect?) {
         self.closure = closure
     }
     
