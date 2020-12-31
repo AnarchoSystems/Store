@@ -17,7 +17,7 @@ public extension Reducer {
     }
     
     @inlinable
-    func mapState<Arrow : Prism>(_ prism: Arrow) -> StatePrismingReducter<Self, Arrow> where Arrow.PartialState == State {
+    func mapState<Arrow : Prism>(_ prism: Arrow) -> StatePrismingReducter<Self, Arrow> where Arrow.MaybePartialState == State {
         StatePrismingReducter(r: self, arrow: prism)
     }
     
@@ -47,7 +47,7 @@ public struct StateLensingReducer<R : Reducer, Arrow : Lens> : Reducer where Arr
 }
 
 
-public struct StatePrismingReducter<R : Reducer, Arrow : Prism> : Reducer where Arrow.PartialState == R.State {
+public struct StatePrismingReducter<R : Reducer, Arrow : Prism> : Reducer where Arrow.MaybePartialState == R.State {
     
     @usableFromInline
     let r : R

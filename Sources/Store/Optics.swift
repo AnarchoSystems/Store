@@ -15,6 +15,11 @@ public protocol Lens {
     
     func apply<T>(to whole: inout WholeState, change: (inout PartialState) -> T) -> T
     
+}
+
+
+public protocol GetSetLens : Lens {
+    
     func get(from whole: WholeState) -> PartialState
     
     func set(in whole: inout WholeState, newValue: PartialState)
@@ -22,7 +27,7 @@ public protocol Lens {
 }
 
 
-public extension Lens {
+public extension GetSetLens {
     
     @inlinable
     func get(from whole: WholeState) -> PartialState {
@@ -38,7 +43,7 @@ public extension Lens {
 }
 
 
-extension WritableKeyPath : Lens {
+extension WritableKeyPath : GetSetLens {
     
     @inlinable
     public func apply<T>(to whole: inout Root,
@@ -61,35 +66,85 @@ extension WritableKeyPath : Lens {
 
 public protocol Prism {
     
-    associatedtype PartialState
+    associatedtype MaybePartialState
     associatedtype WholeState
     
-    func apply<T>(to whole: inout WholeState, change: (inout PartialState) -> T) -> T?
+    func apply<T>(to whole: inout WholeState, change: (inout MaybePartialState) -> T) -> T?
     
-    func tryGet(from whole: WholeState) -> PartialState?
+}
+
+public protocol TryGetPutPrism : Prism {
     
-    func put(in whole: inout WholeState, newValue: PartialState)
+    func tryGet(from whole: WholeState) -> MaybePartialState?
+    
+    func put(in whole: inout WholeState, newValue: MaybePartialState)
     
 }
 
 
-public extension Prism {
+public extension TryGetPutPrism {
     
     @inlinable
-    func tryGet(from whole: WholeState) -> PartialState? {
+    func tryGet(from whole: WholeState) -> MaybePartialState? {
         var copy = whole
         return apply(to: &copy){part in part}
     }
     
     @inlinable
     func put(in whole: inout WholeState,
-             newValue: PartialState) {
+             newValue: MaybePartialState) {
         apply(to: &whole){$0 = newValue}
     }
     
 }
 
-public protocol Extractor {
+
+public protocol OptionalProtocol : ExpressibleByNilLiteral {
+    associatedtype Wrapped
+    func asOptional() -> Wrapped?
+    init(wrapped: Wrapped)
+}
+
+
+extension Optional : OptionalProtocol {
+    @inlinable
+    public func asOptional() -> Wrapped? {
+        self
+    }
+    @inlinable
+    public init(wrapped: Wrapped) {
+        self = wrapped
+    }
+}
+
+
+extension WritableKeyPath : Prism, TryGetPutPrism where Value : OptionalProtocol {
+    
+    @inlinable
+    public func apply<T>(to whole: inout Root, change: (inout Value.Wrapped) -> T) -> T? {
+        guard var value = whole[keyPath: self].asOptional() else {
+            return nil
+        }
+        whole[keyPath: self] = nil
+        let result = change(&value)
+        whole[keyPath: self] = Value(wrapped: value)
+        return result
+    }
+    
+    @inlinable
+    public func tryGet(from whole: Root) -> Value.Wrapped? {
+        whole[keyPath: self].asOptional()
+    }
+    
+    @inlinable
+    public func put(in whole: inout Root, newValue: Value.Wrapped) {
+        whole[keyPath: self] = Value(wrapped: newValue)
+    }
+    
+}
+
+
+public protocol Downcast {
     
     associatedtype SuperType
     associatedtype SubType
@@ -98,12 +153,30 @@ public protocol Extractor {
 
 }
 
-public protocol Embedding : Extractor {
+public protocol Embedding : Downcast {
     
     associatedtype SuperType
     associatedtype SubType
     
     func cast(_ object: SubType) -> SuperType
+    
+}
+
+
+public struct TopEmbedding<T> : Embedding {
+    
+    @inlinable
+    public init(){}
+    
+    @inlinable
+    public func cast(_ object: T) -> Any {
+        object
+    }
+    
+    @inlinable
+    public func downCast(_ object: Any) -> T? {
+        object as? T
+    }
     
 }
 

@@ -16,8 +16,18 @@ public extension Lens {
     }
     
     @inlinable
+    static func ..<P : Prism>(lhs: Self, rhs: P) -> LensPrism<Self, P> where PartialState == P.WholeState {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
     func compose<O : Lens>(with other: O) -> ComposedLens<Self, O> where O.PartialState == WholeState {
         ComposedLens(l1: self, l2: other)
+    }
+    
+    @inlinable
+    func compose<P : Prism>(with prism: P) -> LensPrism<Self, P> where PartialState == P.WholeState {
+        LensPrism(l: self, p: prism)
     }
     
 }
@@ -26,13 +36,23 @@ public extension Lens {
 public extension Prism {
     
     @inlinable
-    static func ..<O : Prism>(lhs: Self, rhs: O) -> ComposedPrism<Self, O> where O.PartialState == WholeState {
+    static func ..<O : Prism>(lhs: Self, rhs: O) -> ComposedPrism<Self, O> where O.MaybePartialState == WholeState {
         lhs.compose(with: rhs)
     }
     
     @inlinable
-    func compose<O : Prism>(with other: O) -> ComposedPrism<Self, O> where O.PartialState == WholeState {
+    static func ..<L : Lens>(lhs: Self, rhs: L) -> PrismLens<Self, L> where L.WholeState == MaybePartialState {
+        lhs.compose(with: rhs)
+    }
+    
+    @inlinable
+    func compose<O : Prism>(with other: O) -> ComposedPrism<Self, O> where O.MaybePartialState == WholeState {
         ComposedPrism(p1: self, p2: other)
+    }
+    
+    @inlinable
+    func compose<L : Lens>(with lens: L) -> PrismLens<Self, L> where L.WholeState == MaybePartialState {
+        PrismLens(l: lens, p: self)
     }
     
 }
@@ -74,7 +94,7 @@ public struct ComposedLens<L1 : Lens, L2 : Lens> : Lens where L1.WholeState == L
 }
 
 
-public struct ComposedPrism<P1 : Prism, P2 : Prism> : Prism where P1.WholeState == P2.PartialState {
+public struct ComposedPrism<P1 : Prism, P2 : Prism> : Prism where P1.WholeState == P2.MaybePartialState {
    
     @usableFromInline
     let p1 : P1
@@ -86,7 +106,7 @@ public struct ComposedPrism<P1 : Prism, P2 : Prism> : Prism where P1.WholeState 
     
     @inlinable
     public func apply<T>(to whole: inout P2.WholeState,
-                         change: (inout P1.PartialState) -> T) -> T? {
+                         change: (inout P1.MaybePartialState) -> T) -> T? {
         p2.apply(to: &whole) {partial in
             p1.apply(to: &partial, change: change)
         }?.flatMap{$0}
@@ -113,6 +133,46 @@ public struct ComposedEmbedding<E1 : Embedding, E2 : Embedding> : Embedding wher
     @inlinable
     public func downCast(_ object: E2.SuperType) -> E1.SubType? {
         e2.downCast(object).flatMap(e1.downCast)
+    }
+    
+}
+
+
+public struct LensPrism<L : Lens, P : Prism> : Prism where L.PartialState == P.WholeState {
+    
+    @usableFromInline
+    let l : L
+    @usableFromInline
+    let p : P
+    
+    @usableFromInline
+    init(l: L, p: P){(self.l, self.p) = (l, p)}
+    
+    @inlinable
+    public func apply<T>(to whole: inout L.WholeState, change: (inout P.MaybePartialState) -> T) -> T? {
+        l.apply(to: &whole){part in
+            p.apply(to: &part, change: change)
+        }
+    }
+    
+}
+
+
+public struct PrismLens<P : Prism, L : Lens> where P.MaybePartialState == L.WholeState {
+    
+    @usableFromInline
+    let l : L
+    @usableFromInline
+    let p : P
+    
+    @usableFromInline
+    init(l: L, p: P){(self.l, self.p) = (l, p)}
+    
+    @inlinable
+    public func apply<T>(to whole: inout P.WholeState, change: (inout L.PartialState) -> T) -> T? {
+        p.apply(to: &whole){part in
+            l.apply(to: &part, change: change)
+        }
     }
     
 }

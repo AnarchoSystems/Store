@@ -27,13 +27,18 @@ public protocol StateArrow {
     associatedtype State
     associatedtype NewState
     associatedtype Effect
-    associatedtype NewEffect
+    associatedtype NewEffect = Effect
     
     func apply(to state: inout NewState, change: (inout State) -> Effect?) -> NewEffect?
     
 }
 
-public struct ClosureStateArrow<State, NewState, Effect, NewEffect> : StateArrow {
+
+public typealias ClosureStateArrow = MapState
+public typealias PureMapState<NewState, State> = MapState<NewState, State, Void, Void> 
+
+
+public struct MapState<NewState, State, Effect, NewEffect> : StateArrow {
     
     @usableFromInline
     let closure : (inout NewState, (inout State) -> Effect?) -> NewEffect?

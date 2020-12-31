@@ -18,7 +18,7 @@ public extension Reducer {
         ActionMappingReducer(r: self, f: Closure(transform))
     }
     
-    func embedAction<E : Extractor>(_ embedding: E) -> ActionEmbeddingReducer<Self, E> where E.SubType == Action {
+    func embedAction<E : Downcast>(_ embedding: E) -> ActionEmbeddingReducer<Self, E> where E.SubType == Action {
         ActionEmbeddingReducer(r: self, e: embedding)
     }
     
@@ -75,7 +75,7 @@ public struct ActionFlatMappingReducer<R : Reducer, F : Function> where F.Output
 }
 
 
-public struct ActionEmbeddingReducer<R : Reducer, E : Extractor> where E.SubType == R.Action {
+public struct ActionEmbeddingReducer<R : Reducer, E : Downcast> where E.SubType == R.Action {
     
     @usableFromInline
     let r : R

@@ -47,7 +47,7 @@ public extension Middleware {
 }
 
 
-public struct InjectingMiddleware<Base : Middleware, L : Lens> : Middleware where L.WholeState == Environment<Base.State, Base.BaseDispatch.Action> {
+public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middleware where L.WholeState == Environment<Base.State, Base.BaseDispatch.Action> {
     
     @usableFromInline
     let base : Base
