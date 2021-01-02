@@ -38,7 +38,7 @@ public struct StateLensingReducer<R : Reducer, Arrow : Lens> : Reducer where Arr
     }
     
     @inlinable
-    public func apply(to state: inout Arrow.WholeState, action: R.Action) -> R.SideEffect? {
+    public func apply(to state: inout Arrow.WholeState, action: R.Action) -> [R.SideEffect] {
         arrow.apply(to: &state) {part in
             r.apply(to: &part, action: action)
         }
@@ -61,10 +61,10 @@ public struct StatePrismingReducter<R : Reducer, Arrow : Prism> : Reducer where 
     }
     
     @inlinable
-    public func apply(to state: inout Arrow.WholeState, action: R.Action) -> R.SideEffect? {
+    public func apply(to state: inout Arrow.WholeState, action: R.Action) -> [R.SideEffect] {
         arrow.apply(to: &state) {part in
             r.apply(to: &part, action: action)
-        }.flatMap{$0}
+        } ?? []
     }
     
 }

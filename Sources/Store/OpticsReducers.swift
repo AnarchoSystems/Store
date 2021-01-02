@@ -91,14 +91,14 @@ public protocol StateArrowReducer : Reducer {
     
     var stateMap : StateMap{get}
     
-    func apply(to part: inout StateMap.State, action: Action) -> StateMap.Effect?
+    func apply(to part: inout StateMap.State, action: Action) -> [StateMap.Effect]
     
 }
 
 
 public extension StateArrowReducer {
     
-    func apply(to state: inout StateMap.NewState, action: Action) -> StateMap.NewEffect? {
+    func apply(to state: inout StateMap.NewState, action: Action) -> [StateMap.NewEffect] {
         stateMap.apply(to: &state){partialState in
             apply(to: &partialState, action: action)
         }

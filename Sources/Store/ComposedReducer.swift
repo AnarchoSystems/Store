@@ -7,21 +7,22 @@
 
 import Foundation
 
+infix operator <>
 
 public extension Reducer {
     
     @inlinable
-    static func ..<O : Reducer>(lhs: Self, rhs: O) -> LPComposedReducer<Self, O> where SideEffect == Void, Action == O.Action, State == O.State {
+    static func <><O : Reducer>(lhs: Self, rhs: O) -> LPComposedReducer<Self, O> where SideEffect == Void, Action == O.Action, State == O.State {
         lhs.compose(with: rhs)
     }
     
     @inlinable
-    static func ..<O : Reducer>(lhs: Self, rhs: O) -> RPComposedReducer<Self, O> where O.SideEffect == Void, Action == O.Action, State == O.State {
+    static func <><O : Reducer>(lhs: Self, rhs: O) -> RPComposedReducer<Self, O> where O.SideEffect == Void, Action == O.Action, State == O.State {
         lhs.compose(with: rhs)
     }
     
     @inlinable
-    static func ..<O : Reducer>(lhs: Self, rhs: O) -> CSComposedReducer<Self, O> where SideEffect == O.SideEffect, SideEffect : ExpressibleByArrayLiteral, Action == O.Action, State == O.State {
+    static func <><O : Reducer>(lhs: Self, rhs: O) -> CSComposedReducer<Self, O> where SideEffect == O.SideEffect, SideEffect : ExpressibleByArrayLiteral, Action == O.Action, State == O.State {
         lhs.compose(with: rhs)
     }
     
@@ -36,7 +37,7 @@ public extension Reducer {
     }
     
     @inlinable
-    func compose<O : Reducer>(with other: O) -> CSComposedReducer<Self, O> where State == O.State, Action == O.Action, SideEffect == O.SideEffect, SideEffect : ExpressibleByArrayLiteral {
+    func compose<O : Reducer>(with other: O) -> CSComposedReducer<Self, O> where State == O.State, Action == O.Action, SideEffect == O.SideEffect {
         CSComposedReducer(r1: self, r2: other)
     }
     
@@ -57,8 +58,8 @@ public struct LPComposedReducer<R1 : Reducer, R2 : Reducer> : Reducer where R1.S
     }
     
     @inlinable
-    public func apply(to state: inout R1.State, action: R1.Action) -> R2.SideEffect? {
-        r1.apply(to: &state, action: action)
+    public func apply(to state: inout R1.State, action: R1.Action) -> [R2.SideEffect] {
+        _ = r1.apply(to: &state, action: action)
         return r2.apply(to: &state, action: action)
     }
     
@@ -79,16 +80,16 @@ public struct RPComposedReducer<R1 : Reducer, R2 : Reducer> : Reducer where R2.S
     }
     
     @inlinable
-    public func apply(to state: inout R1.State, action: R1.Action) -> R1.SideEffect? {
+    public func apply(to state: inout R1.State, action: R1.Action) -> [R1.SideEffect] {
         let out = r1.apply(to: &state, action: action)
-        r2.apply(to: &state, action: action)
+        _ = r2.apply(to: &state, action: action)
         return out
     }
     
 }
 
 
-public struct CSComposedReducer<R1 : Reducer, R2 : Reducer> : Reducer where R1.State == R2.State, R1.Action == R2.Action, R1.SideEffect == R2.SideEffect, R1.SideEffect : ExpressibleByArrayLiteral, R1.SideEffect.ArrayLiteralElement == R1.SideEffect {
+public struct CSComposedReducer<R1 : Reducer, R2 : Reducer> : Reducer where R1.State == R2.State, R1.Action == R2.Action, R1.SideEffect == R2.SideEffect {
     
     @usableFromInline
     let r1 : R1
@@ -102,10 +103,10 @@ public struct CSComposedReducer<R1 : Reducer, R2 : Reducer> : Reducer where R1.S
     }
     
     @inlinable
-    public func apply(to state: inout R1.State, action: R1.Action) -> R1.SideEffect? {
-        let s1 = r1.apply(to: &state, action: action)
-        let s2 = r2.apply(to: &state, action: action)
-        return s1.flatMap{s1 in s2.map{s2 in [s1, s2]} ?? s2} ?? s1
+    public func apply(to state: inout R1.State, action: R1.Action) -> [R1.SideEffect] {
+        var result = r1.apply(to: &state, action: action)
+        result.append(contentsOf: r2.apply(to: &state, action: action))
+        return result
     }
     
 }

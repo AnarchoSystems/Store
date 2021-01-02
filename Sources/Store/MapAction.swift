@@ -47,7 +47,7 @@ public struct ActionMappingReducer<R : Reducer, F : Function> : Reducer where F.
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: F.Input) -> R.SideEffect? {
+    public func apply(to state: inout R.State, action: F.Input) -> [R.SideEffect] {
         r.apply(to: &state, action: f(action))
     }
     
@@ -68,9 +68,9 @@ public struct ActionFlatMappingReducer<R : Reducer, F : Function> where F.Output
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: F.Input) -> R.SideEffect? {
+    public func apply(to state: inout R.State, action: F.Input) -> [R.SideEffect] {
         f(action)
-            .flatMap{action in r.apply(to: &state, action: action)}
+            .flatMap{action in r.apply(to: &state, action: action)} ?? []
     }
 }
 
@@ -89,8 +89,8 @@ public struct ActionEmbeddingReducer<R : Reducer, E : Downcast> where E.SubType 
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: E.SuperType) -> R.SideEffect? {
+    public func apply(to state: inout R.State, action: E.SuperType) -> [R.SideEffect] {
         e.downCast(action)
-            .flatMap{action in r.apply(to: &state, action: action)}
+            .flatMap{action in r.apply(to: &state, action: action)} ?? []
     }
 }

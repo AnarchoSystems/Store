@@ -33,7 +33,7 @@ public struct ComposedStateArrow<A1 : StateArrow, A2 : StateArrow> : StateArrow 
     
     @inlinable
     public func apply(to state: inout A2.NewState,
-                      change: (inout A1.State) -> A1.Effect?) -> A2.NewEffect? {
+                      change: (inout A1.State) -> [A1.Effect]) -> [A2.NewEffect] {
         a2.apply(to: &state) {partial in
             a1.apply(to: &partial, change: change)
         }

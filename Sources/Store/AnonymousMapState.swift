@@ -16,8 +16,9 @@ public extension Reducer {
     }
     
     @inlinable
-    func mapState<NewState, NewEffect>(_ arrow: @escaping (inout NewState, (inout State) -> SideEffect?) -> NewEffect?) -> AnonymousStateMap<Self, ClosureStateArrow<State, NewState, SideEffect, NewEffect>> {
-        AnonymousStateMap(r: self, arrow: ClosureStateArrow(arrow))
+    func mapState<NewState, NewEffect>(_ arrow: @escaping (inout NewState, (inout State) -> [SideEffect]) -> [NewEffect]) -> AnonymousStateMap<Self, ClosureStateArrow<State, NewState, SideEffect, NewEffect>> {
+        AnonymousStateMap(r: self,
+                          arrow: ClosureStateArrow(arrow))
     }
     
 }
@@ -29,7 +30,7 @@ public protocol StateArrow {
     associatedtype Effect
     associatedtype NewEffect = Effect
     
-    func apply(to state: inout NewState, change: (inout State) -> Effect?) -> NewEffect?
+    func apply(to state: inout NewState, change: (inout State) -> [Effect]) -> [NewEffect]
     
 }
 
@@ -41,15 +42,15 @@ public typealias PureMapState<NewState, State> = MapState<NewState, State, Void,
 public struct MapState<NewState, State, Effect, NewEffect> : StateArrow {
     
     @usableFromInline
-    let closure : (inout NewState, (inout State) -> Effect?) -> NewEffect?
+    let closure : (inout NewState, (inout State) -> [Effect]) -> [NewEffect]
     
     @inlinable
-    public init(_ closure: @escaping (inout NewState, (inout State) -> Effect?) -> NewEffect?) {
+    public init(_ closure: @escaping (inout NewState, (inout State) -> [Effect]) -> [NewEffect]) {
         self.closure = closure
     }
     
     public func apply(to state: inout NewState,
-                      change: (inout State) -> Effect?) -> NewEffect? {
+                      change: (inout State) -> [Effect]) -> [NewEffect] {
         closure(&state, change)
     }
     
@@ -70,7 +71,7 @@ public struct AnonymousStateMap<R : Reducer, Arrow : StateArrow> : Reducer where
     }
     
     @inlinable
-    public func apply(to state: inout Arrow.NewState, action: R.Action) -> Arrow.NewEffect? {
+    public func apply(to state: inout Arrow.NewState, action: R.Action) -> [Arrow.NewEffect] {
         arrow.apply(to: &state){part in r.apply(to: &part, action: action)}
     }
     

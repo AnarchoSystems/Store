@@ -102,7 +102,8 @@ public extension TryGetPutPrism {
 public protocol OptionalProtocol : ExpressibleByNilLiteral {
     associatedtype Wrapped
     func asOptional() -> Wrapped?
-    init(wrapped: Wrapped)
+    mutating func mutate<T>(_ closure: (inout Wrapped) -> T) -> T?
+    mutating func set(to newValue: Wrapped)
 }
 
 
@@ -112,8 +113,16 @@ extension Optional : OptionalProtocol {
         self
     }
     @inlinable
-    public init(wrapped: Wrapped) {
-        self = wrapped
+    public mutating func mutate<T>(_ closure: (inout Wrapped) -> T) -> T? {
+        guard var value = self else {
+            return nil
+        }
+        self = nil
+        defer {self = value}
+        return closure(&value)
+    }
+    public mutating func set(to newValue: Wrapped) {
+        self = newValue
     }
 }
 
@@ -122,13 +131,7 @@ extension WritableKeyPath : Prism, TryGetPutPrism where Value : OptionalProtocol
     
     @inlinable
     public func apply<T>(to whole: inout Root, change: (inout Value.Wrapped) -> T) -> T? {
-        guard var value = whole[keyPath: self].asOptional() else {
-            return nil
-        }
-        whole[keyPath: self] = nil
-        let result = change(&value)
-        whole[keyPath: self] = Value(wrapped: value)
-        return result
+        whole[keyPath: self].mutate(change)
     }
     
     @inlinable
@@ -138,7 +141,7 @@ extension WritableKeyPath : Prism, TryGetPutPrism where Value : OptionalProtocol
     
     @inlinable
     public func put(in whole: inout Root, newValue: Value.Wrapped) {
-        whole[keyPath: self] = Value(wrapped: newValue)
+        whole[keyPath: self].set(to: newValue)
     }
     
 }
@@ -234,6 +237,24 @@ public struct ResultEmbedding<Success, Failure : Error> : Embedding {
     @inlinable
     public func downCast(_ object: Result<Success, Failure>) -> Success? {
         try? object.get()
+    }
+    
+}
+
+
+public struct RawEmbedding<R : RawRepresentable> : Embedding {
+    
+    @inlinable
+    public init() {}
+    
+    @inlinable
+    public func cast(_ object: R) -> R.RawValue {
+        object.rawValue
+    }
+    
+    @inlinable
+    public func downCast(_ object: R.RawValue) -> R? {
+        R(rawValue: object)
     }
     
 }

@@ -13,10 +13,16 @@ public protocol EnvironmentKey {
 }
 
 
-public struct Environment<State, Action> {
+public struct Environment {
     
-    private var dict : [String : Any] = [:]
+    @usableFromInline
+    var dict : [String : Any] = [:]
     
+    @inlinable
+    public init(){}
+    
+    
+    @inlinable
     public subscript<Key : EnvironmentKey>(_ key: Key.Type) -> Key.Value? {
         get{
             dict[String(describing: key)] as? Key.Value
@@ -35,9 +41,10 @@ public struct Environment<State, Action> {
 
 public extension Middleware {
     
+    @inlinable
     func injecting<L : Lens>(_ value: L.PartialState,
                              for lens: L) -> InjectingMiddleware<Self, L>
-    where L.WholeState == Environment<State, BaseDispatch.Action>
+    where L.WholeState == Environment
     {
             InjectingMiddleware(base: self,
                                 lens: lens,
@@ -47,7 +54,7 @@ public extension Middleware {
 }
 
 
-public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middleware where L.WholeState == Environment<Base.State, Base.BaseDispatch.Action> {
+public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middleware where L.WholeState == Environment {
     
     @usableFromInline
     let base : Base
@@ -65,10 +72,12 @@ public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middlewar
     
     @inlinable
     public func apply(to dispatchFunction: Base.BaseDispatch,
-                      environment: Environment<Base.State, Base.BaseDispatch.Action>) -> Base.NewDispatch {
+                      store: StoreStub<Base.State, Base.BaseDispatch.Action>,
+                      environment: Environment) -> Base.NewDispatch {
         var env = environment
         lens.set(in: &env, newValue: value)
         return base.apply(to: dispatchFunction,
+                          store: store,
                           environment: env)
     }
     

@@ -52,7 +52,7 @@ public struct SideEffectMappingReducer<R : Reducer, Map : Function> : Reducer wh
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: R.Action) -> Map.Output? {
+    public func apply(to state: inout R.State, action: R.Action) -> [Map.Output] {
         r.apply(to: &state, action: action).map(map.callAsFunction)
     }
     
@@ -73,8 +73,8 @@ public struct SideEffectFlatMappingReducer<R : Reducer, FlatMap : Function, NewE
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: R.Action) -> NewEffect? {
-        r.apply(to: &state, action: action).flatMap(flatMap.callAsFunction)
+    public func apply(to state: inout R.State, action: R.Action) -> [NewEffect] {
+        r.apply(to: &state, action: action).compactMap(flatMap.callAsFunction)
     }
     
 }
@@ -91,9 +91,9 @@ public struct PureReducerSideEffectEmbedder<R : Reducer, NewEffect> : Reducer wh
     }
     
     @inlinable
-    public func apply(to state: inout R.State, action: R.Action) -> NewEffect? {
-        r.apply(to: &state, action: action)
-        return nil
+    public func apply(to state: inout R.State, action: R.Action) -> [NewEffect] {
+        _ = r.apply(to: &state, action: action)
+        return []
     }
     
 }

@@ -17,8 +17,10 @@ public extension Reducer {
     }
     
     @inlinable
-    func compose<A, O : Reducer>(with other: O, using cata: @escaping (A, (Action) -> SideEffect?, (O.Action) -> SideEffect?) -> SideEffect?) -> CADComposedReducer<A, Self, O> where O.State == State, O.SideEffect == SideEffect {
-        CADComposedReducer(closure: cata, r1: self, r2: other)
+    func compose<A, O : Reducer>(with other: O, using cata: @escaping (A, (Action) -> [SideEffect], (O.Action) -> [SideEffect]) -> [SideEffect]) -> CADComposedReducer<A, Self, O> where O.State == State, O.SideEffect == SideEffect {
+        CADComposedReducer(closure: cata,
+                           r1: self,
+                           r2: other)
     }
     
 }
@@ -27,7 +29,7 @@ public extension Reducer {
 public struct CADComposedReducer<Action, R1 : Reducer, R2 : Reducer> : Reducer where R1.State == R2.State, R1.SideEffect == R2.SideEffect {
     
     @usableFromInline
-    typealias Cata = (Action, (R1.Action) -> R1.SideEffect?, (R2.Action) -> R2.SideEffect?) -> R1.SideEffect?
+    typealias Cata = (Action, (R1.Action) -> [R1.SideEffect], (R2.Action) -> [R2.SideEffect]) -> [R1.SideEffect]
     
     @usableFromInline
     let closure : Cata
@@ -44,7 +46,7 @@ public struct CADComposedReducer<Action, R1 : Reducer, R2 : Reducer> : Reducer w
     }
     
     @inlinable
-    public func apply(to state: inout R1.State, action: Action) -> R1.SideEffect? {
+    public func apply(to state: inout R1.State, action: Action) -> [R1.SideEffect] {
         closure(action, {r1.apply(to: &state, action: $0)}, {r2.apply(to: &state, action: $0)})
     }
     
@@ -68,8 +70,10 @@ public struct ADComposedReducer<D : Discriminator, R1 : Reducer, R2 : Reducer> :
     }
     
     @inlinable
-    public func apply(to state: inout R1.State, action: D.Sum) -> R1.SideEffect? {
-        discriminator.cata(action, onA: {r1.apply(to: &state, action: $0)}, onB: {r2.apply(to: &state, action: $0)}).flatMap{$0}
+    public func apply(to state: inout R1.State, action: D.Sum) -> [R1.SideEffect] {
+        discriminator.cata(action,
+                           onA: {r1.apply(to: &state, action: $0)},
+                           onB: {r2.apply(to: &state, action: $0)}) ?? []
     }
     
 }
