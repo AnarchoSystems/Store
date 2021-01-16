@@ -11,10 +11,9 @@ import Foundation
 public protocol StoreProtocol {
     
     associatedtype State
-    associatedtype Action
     
     var state : State{get}
-    func dispatch(_ action: Action)
+    func dispatch(_ action: DynamicAction)
     
 }
 
@@ -22,20 +21,20 @@ public protocol StoreProtocol {
 public extension StoreProtocol where Self : AnyObject {
     
     @inlinable
-    func stub() -> StoreStub<State, Action> {
+    func stub() -> StoreStub<State> {
         StoreStub(self)
     }
     
 }
 
 
-public struct StoreStub<State, Action> : StoreProtocol {
+public struct StoreStub<State> : StoreProtocol {
     
     @usableFromInline
-    let store : ErasedStore<State, Action>
+    let store : ErasedStore<State>
     
     @inlinable
-    public init<Store : StoreProtocol & AnyObject>(_ store: Store) where Store.State == State, Store.Action == Action {
+    public init<Store : StoreProtocol & AnyObject>(_ store: Store) where Store.State == State {
         self.store = ConcreteStore(base: store)
     }
     
@@ -45,7 +44,7 @@ public struct StoreStub<State, Action> : StoreProtocol {
     }
     
     @inlinable
-    public func dispatch(_ action: Action) {
+    public func dispatch(_ action: DynamicAction) {
         store.dispatch(action)
     }
     
@@ -53,7 +52,7 @@ public struct StoreStub<State, Action> : StoreProtocol {
 
 
 @usableFromInline
-internal class ErasedStore<State, Action> : StoreProtocol {
+internal class ErasedStore<State> : StoreProtocol {
     
     @usableFromInline
     var state : State {
@@ -61,7 +60,7 @@ internal class ErasedStore<State, Action> : StoreProtocol {
     }
     
     @usableFromInline
-    func dispatch(_ action: Action) {
+    func dispatch(_ action: DynamicAction) {
         fatalError("Abstract")
     }
     
@@ -69,7 +68,7 @@ internal class ErasedStore<State, Action> : StoreProtocol {
 
 
 @usableFromInline
-internal final class ConcreteStore<Base : StoreProtocol & AnyObject> : ErasedStore<Base.State, Base.Action> {
+internal final class ConcreteStore<Base : StoreProtocol & AnyObject> : ErasedStore<Base.State> {
     
     @usableFromInline
     let initialState : Base.State
@@ -88,7 +87,7 @@ internal final class ConcreteStore<Base : StoreProtocol & AnyObject> : ErasedSto
     }
     
     @usableFromInline
-    override func dispatch(_ action: Base.Action) {
+    override func dispatch(_ action: DynamicAction) {
         base?.dispatch(action)
     }
     

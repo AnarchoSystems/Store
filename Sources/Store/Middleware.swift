@@ -9,20 +9,18 @@ import Foundation
 
 
 public protocol DispatchFunction {
-    associatedtype Action
-    associatedtype Effect
-    mutating func dispatch(_ action: Action) -> [Effect]
+    mutating func dispatch(_ action: DynamicAction) -> [DynamicEffect]
 }
 
 
-public protocol Middleware where BaseDispatch.Action == NewDispatch.Action, BaseDispatch.Effect == NewDispatch.Effect {
+public protocol Middleware {
     
     associatedtype State
     associatedtype BaseDispatch : DispatchFunction
     associatedtype NewDispatch : DispatchFunction
     
     func apply(to dispatchFunction: BaseDispatch,
-               store: StoreStub<State, BaseDispatch.Action>,
+               store: StoreStub<State>,
                environment: Environment) -> NewDispatch
     
 }

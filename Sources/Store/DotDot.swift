@@ -8,7 +8,7 @@
 import Foundation
 
 
-infix operator ..
+infix operator .. : AdditionPrecedence
 
 @inlinable
 public func ..<S,T,U>(lhs: @escaping (S) -> T,

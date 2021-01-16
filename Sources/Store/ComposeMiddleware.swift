@@ -32,7 +32,7 @@ public struct ComposedMiddleware<M1 : Middleware, M2 : Middleware> : Middleware 
     init(m1: M1, m2: M2){(self.m1, self.m2) = (m1, m2)}
     
     public func apply(to dispatchFunction: M1.BaseDispatch,
-                      store: StoreStub<M1.State, M1.BaseDispatch.Action>,
+                      store: StoreStub<M1.State>,
                       environment: Environment) -> M2.NewDispatch {
         m2.apply(to: m1.apply(to: dispatchFunction,
                               store: store,

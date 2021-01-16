@@ -11,7 +11,7 @@ import Foundation
 public extension Lens {
     
     @inlinable
-    static func ..<O : Lens>(lhs: Self, rhs: O) -> ComposedLens<Self, O> where O.PartialState == WholeState {
+    static func ..<O : Lens>(lhs: Self, rhs: O) -> ComposedLens<Self, O> where O.WholeState == PartialState {
         lhs.compose(with: rhs)
     }
     
@@ -21,7 +21,7 @@ public extension Lens {
     }
     
     @inlinable
-    func compose<O : Lens>(with other: O) -> ComposedLens<Self, O> where O.PartialState == WholeState {
+    func compose<O : Lens>(with other: O) -> ComposedLens<Self, O> where PartialState == O.WholeState {
         ComposedLens(l1: self, l2: other)
     }
     
@@ -73,7 +73,7 @@ public extension Embedding {
 }
 
 
-public struct ComposedLens<L1 : Lens, L2 : Lens> : Lens where L1.WholeState == L2.PartialState {
+public struct ComposedLens<L1 : Lens, L2 : Lens> : Lens where L1.PartialState == L2.WholeState {
     
     @usableFromInline
     let l1 : L1
@@ -84,10 +84,26 @@ public struct ComposedLens<L1 : Lens, L2 : Lens> : Lens where L1.WholeState == L
     init(l1: L1, l2: L2){(self.l1, self.l2) = (l1, l2)}
     
     @inlinable
-    public func apply<T>(to whole: inout L2.WholeState,
-                         change: (inout L1.PartialState) -> T) -> T {
-        l2.apply(to: &whole){partial in
-            l1.apply(to: &partial, change: change)
+    public func apply<T>(to whole: inout L1.WholeState,
+                         change: (inout L2.PartialState) -> T) -> T {
+        l1.apply(to: &whole){partial in
+            l2.apply(to: &partial, change: change)
+        }
+    }
+    
+}
+
+
+extension ComposedLens : GetSetLens where L1 : GetSetLens, L2 : GetSetLens {
+    
+    public func get(from whole: L1.WholeState) -> L2.PartialState {
+        l2.get(from: l1.get(from: whole))
+    }
+    
+    public func set(in whole: inout L1.WholeState,
+                    newValue: L2.PartialState) {
+        l1.apply(to: &whole) {part in
+            l2.set(in: &part, newValue: newValue)
         }
     }
     
@@ -173,6 +189,37 @@ public struct PrismLens<P : Prism, L : Lens> where P.MaybePartialState == L.Whol
         p.apply(to: &whole){part in
             l.apply(to: &part, change: change)
         }
+    }
+    
+}
+
+public extension Downcast {
+    
+    @inlinable
+    func withFallback<O : Downcast>(_ fallback: O) -> OrCast<Self, O> where O.SubType == SubType, O.SuperType == SuperType {
+        OrCast(c1: self, c2: fallback)
+    }
+    
+    @inlinable
+    static func ||<O : Downcast>(lhs: Self, rhs: O) -> OrCast<Self, O> where O.SubType == SubType, O.SuperType == SuperType {
+        lhs.withFallback(rhs)
+    }
+    
+}
+
+public struct OrCast<C1 : Downcast, C2 : Downcast> : Downcast where C1.SuperType == C2.SuperType, C1.SubType == C2.SubType {
+    
+    @usableFromInline
+    let c1 : C1
+    @usableFromInline
+    let c2 : C2
+    
+    @usableFromInline
+    init(c1: C1, c2: C2){(self.c1, self.c2) = (c1, c2)}
+    
+    @inlinable
+    public func downCast(_ object: C1.SuperType) -> C1.SubType? {
+        c1.downCast(object) ?? c2.downCast(object)
     }
     
 }

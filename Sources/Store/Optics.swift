@@ -7,7 +7,7 @@
 
 import Foundation
 
-
+@dynamicMemberLookup
 public protocol Lens {
     
     associatedtype PartialState
@@ -15,6 +15,14 @@ public protocol Lens {
     
     func apply<T>(to whole: inout WholeState, change: (inout PartialState) -> T) -> T
     
+}
+
+
+public extension Lens {
+    
+    subscript<T>(dynamicMember kp: WritableKeyPath<PartialState,T>) -> ComposedLens<Self, WritableKeyPath<PartialState, T>> {
+        self.compose(with: kp)
+    }
 }
 
 
@@ -81,6 +89,17 @@ public protocol TryGetPutPrism : Prism {
     
 }
 
+public extension TryGetPutPrism {
+    
+    typealias SuperType = WholeState
+    typealias SubType = MaybePartialState
+    
+    @inlinable
+    func downCast(_ object: SuperType) -> SubType? {
+        tryGet(from: object)
+    }
+    
+}
 
 public extension TryGetPutPrism {
     
@@ -88,12 +107,6 @@ public extension TryGetPutPrism {
     func tryGet(from whole: WholeState) -> MaybePartialState? {
         var copy = whole
         return apply(to: &copy){part in part}
-    }
-    
-    @inlinable
-    func put(in whole: inout WholeState,
-             newValue: MaybePartialState) {
-        apply(to: &whole){$0 = newValue}
     }
     
 }
@@ -127,7 +140,7 @@ extension Optional : OptionalProtocol {
 }
 
 
-extension WritableKeyPath : Prism, TryGetPutPrism where Value : OptionalProtocol {
+extension WritableKeyPath : Prism, Downcast, TryGetPutPrism where Value : OptionalProtocol {
     
     @inlinable
     public func apply<T>(to whole: inout Root, change: (inout Value.Wrapped) -> T) -> T? {
@@ -142,6 +155,33 @@ extension WritableKeyPath : Prism, TryGetPutPrism where Value : OptionalProtocol
     @inlinable
     public func put(in whole: inout Root, newValue: Value.Wrapped) {
         whole[keyPath: self].set(to: newValue)
+    }
+    
+}
+
+
+public struct IntStringMap : TryGetPutPrism {
+    
+    @inlinable
+    public func apply<T>(to whole: inout String,
+                  change: (inout Int) -> T) -> T? {
+        guard var int = Int(whole) else {
+            return nil
+        }
+        defer {
+            whole = String(int)
+        }
+        return change(&int)
+    }
+    
+    @inlinable
+    public func tryGet(from whole: String) -> Int? {
+        Int(whole)
+    }
+    
+    @inlinable
+    public func put(in whole: inout String, newValue: Int) {
+        whole = String(newValue)
     }
     
 }

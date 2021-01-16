@@ -72,7 +72,7 @@ public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middlewar
     
     @inlinable
     public func apply(to dispatchFunction: Base.BaseDispatch,
-                      store: StoreStub<Base.State, Base.BaseDispatch.Action>,
+                      store: StoreStub<Base.State>,
                       environment: Environment) -> Base.NewDispatch {
         var env = environment
         lens.set(in: &env, newValue: value)

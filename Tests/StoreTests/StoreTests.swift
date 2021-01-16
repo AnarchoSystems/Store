@@ -24,9 +24,30 @@ final class StoreTests: XCTestCase {
         }
         
     }
+    
+    
+    func testPairing() {
+        
+        var pair = Pair(first: 42, second: 1337)
+        
+        let lens = Pair<Int,Int>.Lens.first.paired(with: \Pair<Int,Int>.second)
+        
+        lens.apply(to: &pair) {paired in
+            paired.withBoth{first, second in
+                let oldFirst = first
+                first += second
+                second += oldFirst
+            }
+        }
+        
+        XCTAssertEqual(pair.first, pair.second)
+        
+    }
+    
 
     static var allTests = [
         ("testEmbedding", testEmbedding),
+        ("testPairing", testPairing)
     ]
 }
 
@@ -34,3 +55,9 @@ final class StoreTests: XCTestCase {
 class Foo {}
 class Bar : Foo {}
 class Baz : Foo {}
+
+
+struct Pair<T,U> : Lensable {
+    var first : T
+    var second : U
+}

@@ -16,11 +16,7 @@ public typealias Store = DefaultStore
 
 public final class DefaultStore<State, Dispatch : DispatchFunction> : StoreProtocol {
     
-    private(set) public var state : State {
-        willSet {
-                self.delegate?.storeWillChangeState()
-        }
-    }
+    private(set) public var state : State
     
     public weak var delegate : StoreDelegate?
     
@@ -33,7 +29,7 @@ public final class DefaultStore<State, Dispatch : DispatchFunction> : StoreProto
         environment: Environment,
         delegate: Delegate,
         middleware: M)
-    where R.Action == Dispatch.Action, R.State == State, R.SideEffect == Dispatch.Effect, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
+    where R.State == State, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
         
         self.state = initialState
         
@@ -52,8 +48,9 @@ public final class DefaultStore<State, Dispatch : DispatchFunction> : StoreProto
 public extension DefaultStore {
     
     @inlinable
-    func dispatch(_ action: Dispatch.Action) {
+    func dispatch(_ action: DynamicAction) {
         DispatchQueue.main.async{[weak self] in
+            self?.delegate?.storeWillChangeState()
             _ = self?._dispatch?.dispatch(action)
         }
     }
@@ -64,7 +61,7 @@ public extension DefaultStore {
 extension DefaultStore : ChangeAcceptor {
     
     @usableFromInline
-    func dispatch<C : EffectfulChange>(change: C) -> [Dispatch.Effect] where C.State == State, C.SideEffect == Dispatch.Effect {
+    func dispatch<C : EffectfulChange>(change: C) -> [DynamicEffect] where C.State == State {
         change.apply(to: &state)
     }
     

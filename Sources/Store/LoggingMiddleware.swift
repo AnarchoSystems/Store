@@ -9,13 +9,11 @@ import Foundation
 
 
 public protocol Logger {
-    associatedtype Action
-    associatedtype Effect
-    func log(action: Action, effect: [Effect])
+    func log(action: DynamicAction, effect: [DynamicEffect])
 }
 
 
-public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Middleware where L.Action == Base.Action, L.Effect == Base.Effect {
+public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Middleware {
     
     @usableFromInline
     let logger : L
@@ -27,7 +25,7 @@ public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Mi
     
     @inlinable
     public func apply(to dispatchFunction: Base,
-                      store: StoreStub<State, Base.Action>,
+                      store: StoreStub<State>,
                       environment: Environment) -> NewDispatch {
         NewDispatch(logger: logger, base: dispatchFunction)
     }
@@ -46,7 +44,7 @@ public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Mi
         }
         
         @inlinable
-        mutating public func dispatch(_ action: Base.Action) -> [Base.Effect] {
+        mutating public func dispatch(_ action: DynamicAction) -> [DynamicEffect] {
             
             let eff = base.dispatch(action)
             logger.log(action: action, effect: eff)

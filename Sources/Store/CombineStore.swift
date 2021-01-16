@@ -12,11 +12,7 @@ import Combine
 
 public final class CombineStore<State, Dispatch : DispatchFunction> : ObservableObject, StoreProtocol {
     
-    private(set) public var state : State {
-        willSet {
-            objectWillChange.send()
-        }
-    }
+    private(set) public var state : State
     
     @usableFromInline
     var _dispatch : Dispatch?
@@ -26,7 +22,7 @@ public final class CombineStore<State, Dispatch : DispatchFunction> : Observable
         reducer: R,
         environment: Environment = Environment(),
         middleware: M)
-    where R.Action == Dispatch.Action, R.State == State, R.SideEffect == Dispatch.Effect, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
+    where R.State == State, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
         
         self.state = initialState
         
@@ -44,8 +40,9 @@ public final class CombineStore<State, Dispatch : DispatchFunction> : Observable
 public extension CombineStore {
     
     @inlinable
-    func dispatch(_ action: Dispatch.Action) {
+    func dispatch(_ action: DynamicAction) {
         DispatchQueue.main.async{[weak self] in
+            self?.objectWillChange.send()
             _ = self?._dispatch?.dispatch(action)
         }
     }
@@ -56,7 +53,7 @@ public extension CombineStore {
 extension CombineStore : ChangeAcceptor {
     
     @usableFromInline
-    func dispatch<C : EffectfulChange>(change: C) -> [Dispatch.Effect] where C.State == State, C.SideEffect == Dispatch.Effect {
+    func dispatch<C : EffectfulChange>(change: C) -> [DynamicEffect] where C.State == State {
         change.apply(to: &state)
     }
     
