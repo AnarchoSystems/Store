@@ -8,20 +8,31 @@
 import Foundation
 
 
-public protocol Reducer {
+public protocol DependentReducer {
     
-    associatedtype State
+    associatedtype Implementation : ReducerImplementation
     
-    func apply(to state: inout State, action: DynamicAction) -> [DynamicEffect]
+    func inject(from environment: Dependencies) -> Implementation
     
 }
 
-public typealias ErasedReducer = Reducer
 
-
-public protocol ReducerWrapper : ErasedReducer where State == Body.State {
+public protocol ReducerImplementation {
     
-    associatedtype Body : ErasedReducer
+    associatedtype State
+    
+    func apply<Action : DynamicAction>(to state: inout State,
+                                       action: Action) -> [DynamicEffect]
+    
+}
+
+
+
+
+
+public protocol ReducerWrapper : DependentReducer where Body.Implementation == Implementation {
+    
+    associatedtype Body : DependentReducer
     
     var body : Body {get}
     
@@ -30,17 +41,78 @@ public protocol ReducerWrapper : ErasedReducer where State == Body.State {
 
 public extension ReducerWrapper {
     
-    func apply(to state: inout Body.State, action: DynamicAction) -> [DynamicEffect] {
-        body.apply(to: &state, action: action)
+    @inlinable
+    func inject(from environment: Dependencies) -> Body.Implementation {
+        body.inject(from: environment)
     }
     
 }
 
 
-public protocol PureReducer : ReducerWrapper where PureState == State {
+public protocol IndepentendReducerWrapper {
+    
+    associatedtype Body : ReducerImplementation
+    var body : Body{get}
+    
+}
+
+
+public extension IndepentendReducerWrapper {
+    
+    @inlinable
+    func inject(from environment: Dependencies) -> Body {
+        body
+    }
+    
+}
+
+
+public protocol Reducer : DependentReducer {
+    
+    associatedtype State
+    associatedtype Action : DynamicAction
+    
+    func apply(to state: inout State, action: Action) -> [DynamicEffect]
+    
+    
+}
+
+
+public extension Reducer {
+    
+    @inlinable
+    func inject(from environment: Dependencies) -> Impl<Self> {
+        Impl(reducer: self)
+    }
+    
+}
+
+
+public struct Impl<R : Reducer> : ReducerImplementation {
+    
+    @usableFromInline
+    let reducer : R
+    
+    @usableFromInline
+    init(reducer: R){
+        self.reducer = reducer
+    }
+    
+    @inlinable
+    public func apply<Action : DynamicAction>(to state: inout R.State, action: Action) -> [DynamicEffect] {
+        guard let action = action as? R.Action else {
+            return []
+        }
+        return reducer.apply(to: &state, action: action)
+    }
+    
+}
+
+
+public protocol PureReducer : Reducer where PureState == State {
     
     associatedtype PureState
-    func apply(to state: inout PureState, action: DynamicAction)
+    func apply(to state: inout PureState, action: Action)
     
 }
 
@@ -48,25 +120,11 @@ public protocol PureReducer : ReducerWrapper where PureState == State {
 public extension PureReducer {
     
     @inlinable
-    var body: PureReducerBody<Self>{
-        PureReducerBody(wrapped: self)
-    }
-    
-}
-
-
-public struct PureReducerBody<R : PureReducer> : ErasedReducer {
-    
-    @usableFromInline
-    let wrapped : R
-    
-    @usableFromInline
-    init(wrapped: R){
-        self.wrapped = wrapped
-    }
-    
-    public func apply(to state: inout R.State, action: DynamicAction) -> [DynamicEffect] {
-        wrapped.apply(to: &state, action: action)
+    func apply(to state: inout PureState, action: DynamicAction) -> [DynamicEffect] {
+        guard let action = action as? Action else {
+            return []
+        }
+        apply(to: &state, action: action)
         return []
     }
     

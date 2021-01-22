@@ -20,7 +20,7 @@ internal protocol ChangeAcceptor : AnyObject {
 }
 
 
-public struct BaseDispatch<R : Reducer> : DispatchFunction {
+public struct BaseDispatch<R : ReducerImplementation> : DispatchFunction {
     
     @usableFromInline
     let r : R
@@ -35,7 +35,7 @@ public struct BaseDispatch<R : Reducer> : DispatchFunction {
     }
     
     @inlinable
-    public func dispatch(_ action: DynamicAction) -> [DynamicEffect] {
+    public func dispatch<Action : DynamicAction>(_ action: Action) -> [DynamicEffect] {
         acceptor.dispatch(change: ReducerChange(r: r, action: action))
     }
     
@@ -43,15 +43,15 @@ public struct BaseDispatch<R : Reducer> : DispatchFunction {
 
 
 @usableFromInline
-internal struct ReducerChange<R : Reducer> : EffectfulChange {
+internal struct ReducerChange<R : ReducerImplementation, A : DynamicAction> : EffectfulChange {
     
     @usableFromInline
     let r : R
     @usableFromInline
-    let action : DynamicAction
+    let action : A
     
     @usableFromInline
-    init(r: R, action: DynamicAction){self.r = r; self.action = action}
+    init(r: R, action: A){self.r = r; self.action = action}
     
     @usableFromInline
     func apply(to state: inout R.State) -> [DynamicEffect] {

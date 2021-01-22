@@ -11,9 +11,6 @@ import Foundation
 
 public protocol DynamicAction {}
 public protocol DynamicEffect {}
-public struct Nop : DynamicEffect {
-    @inlinable public init(){}
-}
 
 public typealias DynamicActionCast = ActionCast 
 
@@ -52,5 +49,21 @@ public struct EffectCast<E : DynamicEffect> : Embedding {
     
 }
 
+public protocol ActionRepresentable {
 
-public protocol ActionRepresentable : RawRepresentable where RawValue == DynamicAction {}
+    init?<A : DynamicAction>(action: A)
+
+}
+
+
+public struct ActionEmbedding<A : DynamicAction, R : ActionRepresentable> : Downcast {
+    
+    @inlinable
+    public init(){}
+    
+    @inlinable
+    public func downCast(_ object: A) -> R? {
+        R(action: object)
+    }
+    
+}

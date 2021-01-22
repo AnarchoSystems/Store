@@ -9,7 +9,7 @@ import Foundation
 
 
 public protocol DispatchFunction {
-    mutating func dispatch(_ action: DynamicAction) -> [DynamicEffect]
+    mutating func dispatch<Action : DynamicAction>(_ action: Action) -> [DynamicEffect]
 }
 
 
@@ -21,6 +21,6 @@ public protocol Middleware {
     
     func apply(to dispatchFunction: BaseDispatch,
                store: StoreStub<State>,
-               environment: Environment) -> NewDispatch
+               environment: Dependencies) -> NewDispatch
     
 }

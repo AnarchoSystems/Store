@@ -13,7 +13,7 @@ public protocol EnvironmentKey {
 }
 
 
-public struct Environment {
+public struct Dependencies {
     
     @usableFromInline
     var dict : [String : Any] = [:]
@@ -39,12 +39,46 @@ public struct Environment {
 }
 
 
+public extension DependentReducer {
+    
+    func environmentValue<L : Lens>(
+        _ lens: L,
+        value: L.PartialState
+    ) -> InjectingReducer<L, Self> where L.WholeState == Dependencies {
+        InjectingReducer(body: self, lens: lens, value: value)
+    }
+    
+}
+
+
+
+public struct InjectingReducer<L: Lens, R : DependentReducer> : ReducerWrapper where L.WholeState == Dependencies {
+    public typealias Implementation = R.Implementation
+    
+    
+    public let body : R
+    @usableFromInline
+    let lens : L
+    @usableFromInline
+    let value : L.PartialState
+    
+    @inlinable
+    public func inject(from environment: Dependencies) -> R.Implementation {
+        var environment = environment
+        lens.apply(to: &environment, change: {$0 = value})
+        return body.inject(from: environment)
+    }
+    
+}
+
+
+
 public extension Middleware {
     
     @inlinable
-    func injecting<L : Lens>(_ value: L.PartialState,
+    func environmentValue<L : Lens>(_ value: L.PartialState,
                              for lens: L) -> InjectingMiddleware<Self, L>
-    where L.WholeState == Environment
+    where L.WholeState == Dependencies
     {
             InjectingMiddleware(base: self,
                                 lens: lens,
@@ -54,7 +88,7 @@ public extension Middleware {
 }
 
 
-public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middleware where L.WholeState == Environment {
+public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middleware where L.WholeState == Dependencies {
     
     @usableFromInline
     let base : Base
@@ -73,7 +107,7 @@ public struct InjectingMiddleware<Base : Middleware, L : GetSetLens> : Middlewar
     @inlinable
     public func apply(to dispatchFunction: Base.BaseDispatch,
                       store: StoreStub<Base.State>,
-                      environment: Environment) -> Base.NewDispatch {
+                      environment: Dependencies) -> Base.NewDispatch {
         var env = environment
         lens.set(in: &env, newValue: value)
         return base.apply(to: dispatchFunction,

@@ -8,34 +8,53 @@
 import Foundation
 
 
-public protocol DetailReducer : Reducer where State == StateDetail.WholeState, Body.State == StateDetail.PartialState {
+public protocol DetailReducer : DependentReducer where Implementation.State == StateDetail.WholeState, Body.Implementation.State == StateDetail.PartialState {
     
     associatedtype StateDetail : Lens
-    associatedtype Body : Reducer
+    associatedtype Body : DependentReducer
     
     var lens : StateDetail{get}
     var body : Body{get}
     
 }
 
-
-public extension DetailReducer {
+public struct DetailReducerImplementation<R : ReducerImplementation, L : Lens> : ReducerImplementation where L.PartialState == R.State {
+    
+    @usableFromInline
+    let reducer : R
+    @usableFromInline
+    let lens : L
+    
+    @usableFromInline
+    init(reducer: R, lens: L){
+        (self.reducer, self.lens) = (reducer, lens)
+    }
     
     @inlinable
-    func apply(to state: inout StateDetail.WholeState,
-               action: DynamicAction) -> [DynamicEffect] {
+    public func apply<Action : DynamicAction>(to state: inout L.WholeState,
+                                              action: Action) -> [DynamicEffect] {
         return lens.apply(to: &state) {part in
-            body.apply(to: &part, action: action)
+            reducer.apply(to: &part, action: action)
         }
     }
     
 }
 
+public extension DetailReducer {
+    
+    @inlinable
+    func inject(from environment: Dependencies) -> DetailReducerImplementation<Body.Implementation, StateDetail> {
+        DetailReducerImplementation(reducer: body.inject(from: environment),
+                                    lens: lens)
+    }
+    
+}
 
-public protocol ConditionalReducer : Reducer where State == MaybeState.WholeState, Body.State == MaybeState.MaybePartialState {
+
+public protocol ConditionalReducer : DependentReducer where Implementation.State == MaybeState.WholeState, Body.Implementation.State == MaybeState.MaybePartialState {
     
     associatedtype MaybeState : Prism
-    associatedtype Body : Reducer
+    associatedtype Body : DependentReducer
     
     var prism : MaybeState{get}
     var body : Body{get}
@@ -43,20 +62,41 @@ public protocol ConditionalReducer : Reducer where State == MaybeState.WholeStat
 }
 
 
-public extension ConditionalReducer {
+public struct ConditionalReducerImplementation<R : ReducerImplementation, P : Prism> where R.State == P.MaybePartialState {
+    
+    @usableFromInline
+    let reducer : R
+    @usableFromInline
+    let prism : P
+    
+    @usableFromInline
+    init(reducer: R, prism: P){
+        (self.reducer, self.prism) = (reducer, prism)
+    }
     
     @inlinable
-    func apply(to state: inout MaybeState.WholeState,
-               action: DynamicAction) -> [DynamicEffect] {
+    func apply<Action : DynamicAction>(to state: inout P.WholeState,
+                                       action: Action) -> [DynamicEffect] {
         return prism.apply(to: &state) {part in
-            body.apply(to: &part, action: action)
+            reducer.apply(to: &part, action: action)
         } ?? []
     }
     
 }
 
 
-public protocol ActionMappingReducer : Reducer where ActionMap.SuperType == DynamicAction, ActionType == ActionMap.SubType {
+public extension ConditionalReducer {
+    
+    @inlinable
+    func inject(from environment: Dependencies) -> ConditionalReducerImplementation<Body.Implementation, MaybeState> {
+        ConditionalReducerImplementation(reducer: body.inject(from: environment),
+                                         prism: prism)
+    }
+    
+}
+
+
+public protocol ActionMappingReducer : ReducerImplementation where ActionMap.SuperType : DynamicAction, ActionType == ActionMap.SubType {
     
     associatedtype ActionType
     associatedtype ActionMap : Downcast
@@ -71,9 +111,11 @@ public protocol ActionMappingReducer : Reducer where ActionMap.SuperType == Dyna
 public extension ActionMappingReducer {
     
     @inlinable
-    func apply(to state: inout State,
-               action: DynamicAction) -> [DynamicEffect] {
-        guard let action = actionMap.downCast(action) else {
+    func apply<Action : DynamicAction>(to state: inout State,
+                                       action: Action) -> [DynamicEffect] {
+        guard
+            let downcastAction = action as? ActionMap.SuperType,
+            let action = actionMap.downCast(downcastAction) else {
             return []
         }
         return apply(to: &state, action: action)
@@ -87,18 +129,9 @@ public protocol ActionCastingReducer : ActionMappingReducer where ActionType : D
 
 public extension ActionCastingReducer {
     
+    @inlinable
     var actionMap : DynamicActionCast<ActionType> {
         DynamicActionCast()
-    }
-    
-}
-
-public protocol ActionCataReducer : ActionMappingReducer where ActionType : ActionRepresentable {}
-
-public extension ActionCataReducer {
-    
-    var actionMap : RawEmbedding<ActionType> {
-        RawEmbedding()
     }
     
 }
@@ -116,6 +149,46 @@ public extension PureActionMappingReducer {
     @inlinable
     func apply(to state: inout State,
                action: ActionMap.SubType) -> [DynamicEffect] {
+        apply(to: &state, action: action)
+        return []
+    }
+    
+}
+
+
+public protocol ActionRepresentableReducer : ReducerImplementation {
+    
+    associatedtype ActionType : ActionRepresentable
+    
+    func apply(to state: inout State, action: ActionType) -> [DynamicEffect]
+    
+}
+
+
+public extension ActionRepresentableReducer {
+    
+    @inlinable
+    func apply<Action : DynamicAction>(to state: inout State, action: Action) -> [DynamicEffect] {
+        guard let action = ActionType(action: action) else {
+            return []
+        }
+        return apply(to: &state, action: action)
+    }
+    
+}
+
+
+public protocol PureActionRepresentableReducer : ActionRepresentableReducer {
+    
+    func apply(to state: inout State, action: ActionType)
+    
+}
+
+
+public extension PureActionRepresentableReducer {
+    
+    @inlinable
+    func apply(to state: inout State, action: ActionType) -> [DynamicEffect] {
         apply(to: &state, action: action)
         return []
     }

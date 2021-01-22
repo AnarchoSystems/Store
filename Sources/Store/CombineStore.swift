@@ -17,16 +17,16 @@ public final class CombineStore<State, Dispatch : DispatchFunction> : Observable
     @usableFromInline
     var _dispatch : Dispatch?
     
-    public init<R : Reducer, M : Middleware>(
-        initialState: R.State,
+    public init<R : DependentReducer, M : Middleware>(
+        initialState: R.Implementation.State,
         reducer: R,
-        environment: Environment = Environment(),
+        environment: Dependencies = Dependencies(),
         middleware: M)
-    where R.State == State, M.BaseDispatch == BaseDispatch<R>, M.NewDispatch == Dispatch, M.State == State {
+    where R.Implementation.State == State, M.BaseDispatch == BaseDispatch<R.Implementation>, M.NewDispatch == Dispatch, M.State == State {
         
         self.state = initialState
         
-        let baseDispatch = BaseDispatch(r: reducer,
+        let baseDispatch = BaseDispatch(r: reducer.inject(from: environment),
                                         acceptor: self)
         
         self._dispatch = middleware
@@ -40,7 +40,7 @@ public final class CombineStore<State, Dispatch : DispatchFunction> : Observable
 public extension CombineStore {
     
     @inlinable
-    func dispatch(_ action: DynamicAction) {
+    func dispatch<Action : DynamicAction>(_ action: Action) {
         DispatchQueue.main.async{[weak self] in
             self?.objectWillChange.send()
             _ = self?._dispatch?.dispatch(action)

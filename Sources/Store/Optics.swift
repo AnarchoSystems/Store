@@ -112,54 +112,6 @@ public extension TryGetPutPrism {
 }
 
 
-public protocol OptionalProtocol : ExpressibleByNilLiteral {
-    associatedtype Wrapped
-    func asOptional() -> Wrapped?
-    mutating func mutate<T>(_ closure: (inout Wrapped) -> T) -> T?
-    mutating func set(to newValue: Wrapped)
-}
-
-
-extension Optional : OptionalProtocol {
-    @inlinable
-    public func asOptional() -> Wrapped? {
-        self
-    }
-    @inlinable
-    public mutating func mutate<T>(_ closure: (inout Wrapped) -> T) -> T? {
-        guard var value = self else {
-            return nil
-        }
-        self = nil
-        defer {self = value}
-        return closure(&value)
-    }
-    public mutating func set(to newValue: Wrapped) {
-        self = newValue
-    }
-}
-
-
-extension WritableKeyPath : Prism, Downcast, TryGetPutPrism where Value : OptionalProtocol {
-    
-    @inlinable
-    public func apply<T>(to whole: inout Root, change: (inout Value.Wrapped) -> T) -> T? {
-        whole[keyPath: self].mutate(change)
-    }
-    
-    @inlinable
-    public func tryGet(from whole: Root) -> Value.Wrapped? {
-        whole[keyPath: self].asOptional()
-    }
-    
-    @inlinable
-    public func put(in whole: inout Root, newValue: Value.Wrapped) {
-        whole[keyPath: self].set(to: newValue)
-    }
-    
-}
-
-
 public struct IntStringMap : TryGetPutPrism {
     
     @inlinable

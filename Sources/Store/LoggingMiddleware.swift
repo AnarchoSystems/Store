@@ -9,11 +9,26 @@ import Foundation
 
 
 public protocol Logger {
-    func log(action: DynamicAction, effect: [DynamicEffect])
+    mutating func log(action: DynamicAction,
+                      effect: [DynamicEffect])
 }
 
+public struct ReplayLogger : Logger {
+    
+    private(set) public var actions = [DynamicAction]()
+    private(set) public var effects = [DynamicEffect]()
+    
+    public init(){}
+    
+    public mutating func log(action: DynamicAction,
+                             effect: [DynamicEffect]) {
+        actions.append(action)
+        effects.append(contentsOf: effect)
+    }
+    
+}
 
-public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Middleware {
+public struct Log<State, Base : DispatchFunction, L : Logger> : Middleware {
     
     @usableFromInline
     let logger : L
@@ -26,14 +41,14 @@ public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Mi
     @inlinable
     public func apply(to dispatchFunction: Base,
                       store: StoreStub<State>,
-                      environment: Environment) -> NewDispatch {
+                      environment: Dependencies) -> NewDispatch {
         NewDispatch(logger: logger, base: dispatchFunction)
     }
     
     public struct NewDispatch : DispatchFunction {
         
         @usableFromInline
-        let logger : L
+        var logger : L
         @usableFromInline
         var base : Base
         
@@ -44,7 +59,7 @@ public struct LoggingMiddleware<State, Base : DispatchFunction, L : Logger> : Mi
         }
         
         @inlinable
-        mutating public func dispatch(_ action: DynamicAction) -> [DynamicEffect] {
+        mutating public func dispatch<Action : DynamicAction>(_ action: Action) -> [DynamicEffect] {
             
             let eff = base.dispatch(action)
             logger.log(action: action, effect: eff)

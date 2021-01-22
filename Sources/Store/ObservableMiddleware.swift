@@ -8,44 +8,54 @@
 import Foundation
 
 
-public enum SubscribeAction : DynamicAction {
+public enum SubscribeAction {
     case subscribe
     case unsubscribe
 }
 
-public struct ObservableMiddleware<State, BaseDispatch : DispatchFunction, O : Observable> : Middleware {
+public struct ObservableMiddleware<State, BaseDispatch : DispatchFunction, O : Observable, Action : DynamicAction> : Middleware {
     
     @usableFromInline
     let observable : O
     
     @usableFromInline
-    let onValue : (O.Observation) -> DynamicAction
+    let onValue : (O.Observation) -> Action
     
     @usableFromInline
     let subAction : (DynamicAction) -> SubscribeAction?
     @usableFromInline
     let subEffect : (DynamicEffect) -> SubscribeAction?
     
+    @usableFromInline
+    let onAction : (DynamicAction) -> ((O) -> Void)?
+    @usableFromInline
+    let onEffect : (DynamicEffect) -> ((O) -> Void)?
     
     @inlinable
     public init(_ observable: O,
-                onAction: @escaping (DynamicAction) -> SubscribeAction? = {_ in nil},
-                onEffect: @escaping (DynamicEffect) -> SubscribeAction? = {_ in nil},
-                onSend: @escaping (O.Observation) -> DynamicAction) {
+                subscribeByAction: @escaping (DynamicAction) -> SubscribeAction? = {_ in nil},
+                subscribeByEffect: @escaping (DynamicEffect) -> SubscribeAction? = {_ in nil},
+                onAction: @escaping (DynamicAction) -> ((O) -> Void)? = {_ in nil},
+                onEffect: @escaping (DynamicEffect) -> ((O) -> Void)? = {_ in nil},
+                onSend: @escaping (O.Observation) -> Action) {
         self.observable = observable
         self.onValue = onSend
-        self.subAction = onAction
-        self.subEffect = onEffect
+        self.subAction = subscribeByAction
+        self.subEffect = subscribeByEffect
+        self.onAction = onAction
+        self.onEffect = onEffect
     }
     
     
-    public func apply(to dispatchFunction: BaseDispatch, store: StoreStub<State>, environment: Environment) -> NewDispatch {
+    public func apply(to dispatchFunction: BaseDispatch, store: StoreStub<State>, environment: Dependencies) -> NewDispatch {
         NewDispatch(base: dispatchFunction,
                     observable: observable,
                     onValue: onValue,
                     store: store,
                     subAction: subAction,
-                    subEffect: subEffect)
+                    subEffect: subEffect,
+                    onAction: onAction,
+                    onEffect: onEffect)
     }
     
     public struct NewDispatch : DispatchFunction {
@@ -56,7 +66,7 @@ public struct ObservableMiddleware<State, BaseDispatch : DispatchFunction, O : O
         let observable : O
         
         @usableFromInline
-        let onValue : (O.Observation) -> DynamicAction
+        let onValue : (O.Observation) -> Action
         
         @usableFromInline
         let store : StoreStub<State>
@@ -67,16 +77,27 @@ public struct ObservableMiddleware<State, BaseDispatch : DispatchFunction, O : O
         let subEffect : (DynamicEffect) -> SubscribeAction?
         
         @usableFromInline
+        let onAction : (DynamicAction) -> ((O) -> Void)?
+        @usableFromInline
+        let onEffect : (DynamicEffect) -> ((O) -> Void)?
+        
+        @usableFromInline
         var observers = 0
         
         @usableFromInline
         var cancellable : Cancellable? = nil
         
         @inlinable
-        public mutating func dispatch(_ action: DynamicAction) -> [DynamicEffect] {
+        public mutating func dispatch<Action : DynamicAction>(_ action: Action) -> [DynamicEffect] {
             
             let a0 = subAction(action)
             let effects = base.dispatch(action)
+            
+            let selectors = effects.compactMap(onEffect) + (onAction(action).map{[$0]} ?? [])
+            
+            for selector in selectors {
+                selector(observable)
+            }
             
             let oldValue = observers
             
@@ -127,16 +148,20 @@ public struct ObservableMiddleware<State, BaseDispatch : DispatchFunction, O : O
 }
 
 
-public extension ObservableMiddleware where DynamicAction == O.Observation {
+public extension ObservableMiddleware where O.Observation == Action {
     
     @inlinable
     init(_ observable: O,
-                onAction: @escaping (DynamicAction) -> SubscribeAction? = {_ in nil},
-                onEffect: @escaping (DynamicEffect) -> SubscribeAction? = {_ in nil}) {
+                subscribeByAction: @escaping (DynamicAction) -> SubscribeAction? = {_ in nil},
+                subscribeByEffect: @escaping (DynamicEffect) -> SubscribeAction? = {_ in nil},
+                onAction: @escaping (DynamicAction) -> ((O) -> Void)? = {_ in nil},
+                onEffect: @escaping (DynamicEffect) -> ((O) -> Void)? = {_ in nil}) {
         self.observable = observable
         self.onValue = {$0}
-        self.subAction = onAction
-        self.subEffect = onEffect
+        self.subAction = subscribeByAction
+        self.subEffect = subscribeByEffect
+        self.onAction = onAction
+        self.onEffect = onEffect
     }
     
 }

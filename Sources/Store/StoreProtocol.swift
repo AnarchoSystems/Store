@@ -13,7 +13,7 @@ public protocol StoreProtocol {
     associatedtype State
     
     var state : State{get}
-    func dispatch(_ action: DynamicAction)
+    func dispatch<Action : DynamicAction>(_ action: Action)
     
 }
 
@@ -44,7 +44,7 @@ public struct StoreStub<State> : StoreProtocol {
     }
     
     @inlinable
-    public func dispatch(_ action: DynamicAction) {
+    public func dispatch<Action : DynamicAction>(_ action: Action) {
         store.dispatch(action)
     }
     
@@ -60,7 +60,7 @@ internal class ErasedStore<State> : StoreProtocol {
     }
     
     @usableFromInline
-    func dispatch(_ action: DynamicAction) {
+    func dispatch<Action : DynamicAction>(_ action: Action) {
         fatalError("Abstract")
     }
     
@@ -87,7 +87,7 @@ internal final class ConcreteStore<Base : StoreProtocol & AnyObject> : ErasedSto
     }
     
     @usableFromInline
-    override func dispatch(_ action: DynamicAction) {
+    override func dispatch<Action : DynamicAction>(_ action: Action) {
         base?.dispatch(action)
     }
     
