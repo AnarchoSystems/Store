@@ -49,7 +49,7 @@ public extension ReducerWrapper {
 }
 
 
-public protocol IndepentendReducerWrapper {
+public protocol IndepentendReducerWrapper : DependentReducer {
     
     associatedtype Body : ReducerImplementation
     var body : Body{get}
