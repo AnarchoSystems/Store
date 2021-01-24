@@ -51,6 +51,17 @@ public extension DetailReducer {
 }
 
 
+public extension DetailReducer where Body : ReducerImplementation, Body.State == Body.Implementation.State {
+    
+    func apply<Action : DynamicAction>(to state: inout StateDetail.WholeState, action: Action) -> [DynamicEffect] {
+        lens.apply(to: &state){part in
+            body.apply(to: &part, action: action)
+        }
+    }
+    
+}
+
+
 public protocol ConditionalReducer : DependentReducer where Implementation.State == MaybeState.WholeState, Body.Implementation.State == MaybeState.MaybePartialState {
     
     associatedtype MaybeState : Prism
@@ -95,6 +106,15 @@ public extension ConditionalReducer {
     
 }
 
+public extension ConditionalReducer where Body : ReducerImplementation, Body.State == Body.Implementation.State {
+    
+    func apply<Action : DynamicAction>(to state: inout MaybeState.WholeState, action: Action) -> [DynamicEffect] {
+        prism.apply(to: &state){part in
+            body.apply(to: &part, action: action)
+        } ?? []
+    }
+    
+}
 
 public protocol ActionMappingReducer : ReducerImplementation where ActionMap.SuperType : DynamicAction, ActionType == ActionMap.SubType {
     

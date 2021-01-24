@@ -49,10 +49,28 @@ public extension ReducerWrapper {
 }
 
 
-public protocol IndepentendReducerWrapper : DependentReducer {
+public protocol IndepentendReducerWrapper : DependentReducer, ReducerImplementation {
     
     associatedtype Body : ReducerImplementation
     var body : Body{get}
+    
+}
+
+
+public extension IndepentendReducerWrapper {
+    
+    func apply<Action : DynamicAction>(to state: inout Body.State, action: Action) -> [DynamicEffect] {
+        body.apply(to: &state, action: action)
+    }
+    
+}
+
+
+public extension ReducerWrapper where Body : IndepentendReducerWrapper {
+    
+    func apply<Action : DynamicAction>(to state: inout Body.Body.State, action: Action) -> [DynamicEffect] {
+        body.apply(to: &state, action: action)
+    }
     
 }
 
@@ -67,7 +85,7 @@ public extension IndepentendReducerWrapper {
 }
 
 
-public protocol Reducer : DependentReducer {
+public protocol Reducer : DependentReducer, ReducerImplementation {
     
     associatedtype State
     associatedtype Action : DynamicAction
@@ -83,6 +101,15 @@ public extension Reducer {
     @inlinable
     func inject(from environment: Dependencies) -> Impl<Self> {
         Impl(reducer: self)
+    }
+    
+}
+
+
+public extension Reducer {
+    
+    func apply<Action : DynamicAction>(to state: inout State, action: Action) -> [DynamicEffect] {
+        Impl(reducer: self).apply(to: &state, action: action)
     }
     
 }

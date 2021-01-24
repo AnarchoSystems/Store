@@ -68,3 +68,23 @@ public struct ComposedReducer<R1 : DependentReducer, R2 : DependentReducer> : De
     }
     
 }
+
+
+extension ComposedReducer : ReducerImplementation, IndepentendReducerWrapper where R1 : IndepentendReducerWrapper, R2 : IndepentendReducerWrapper, R1.Body.State == R2.Body.State {
+    
+    public var body: Body {
+        Body(r1: r1.body, r2: r2.body)
+    }
+    
+    public struct Body : ReducerImplementation {
+        
+        let r1 : R1.Body
+        let r2 : R2.Body
+        
+        public func apply<Action>(to state: inout R1.Body.State, action: Action) -> [DynamicEffect] where Action : DynamicAction {
+            r1.apply(to: &state, action: action) + r2.apply(to: &state, action: action)
+        }
+        
+    }
+    
+}
